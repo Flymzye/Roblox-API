@@ -3,6 +3,7 @@ local API = require(game:GetService('ReplicatedStorage'):WaitForChild('API'))
 
 local Query = setmetatable({this = script}, getmetatable(API))
 
+
 --	Takes a string to search for, and a tuple of instances to search through
 function Query:FindChild(query, ...)
 	local instances = API:TupleToArgs(...)
@@ -10,6 +11,18 @@ function Query:FindChild(query, ...)
 	for _, instance in next, instances do
 		for _, child in next, instance:GetChildren() do
 			if child.Name == query then
+				return child
+			end
+		end
+	end
+end
+
+function Query:FindChildOfClass(class, ...)
+	local instances = API:TupleToArgs(...)
+	instances = API:FilterByType('Instance', instances)
+	for _, instance in next, instances do
+		for _, child in next, instance:GetChildren() do
+			if child.ClassName == class then
 				return child
 			end
 		end
@@ -55,7 +68,7 @@ function Query:WaitForChild(query, ...)
 	return child
 end
 
---	Takes a string to search for, and a tuple of instances to search through
+--	Returns a descendant of an object using a provided path
 function Query:FindDescendant(...)
 	local args = API:TupleToArgs(...)
 	local initial = args[1]
@@ -63,6 +76,7 @@ function Query:FindDescendant(...)
 	
 	--	Remove initial from the tuple so we do not check if it is its own parent
 	table.remove(args, 1)
+	
 	
 	if initial and typeof(initial) == 'Instance' then
 		path = initial
@@ -75,6 +89,24 @@ function Query:FindDescendant(...)
 	end
 	
 	return path
+end
+
+--	Destroys a descendant if it finds it
+function Query:SeekAndDestroy(...)
+	local descendant = Query:FindDescendant(...)
+	return descendant and descendant:Destroy()
+end
+
+--	Takes a string to search for, and a tuple of instances to search through
+function Query:FindDescendantOfClass(...)
+	local args = API:TupleToArgs(...)
+	local class = args[#args]
+
+	table.remove(args, #args)
+	
+	local path = Query:FindDescendant(args)
+	
+	return Query:FindChildOfClass(class, path)
 end
 
 --	This method lets you wait for a descendant without waiting for every ancestor of that descendant
@@ -92,6 +124,7 @@ function Query:WaitForDescendant(...)
 	if initial and typeof(initial) == 'Instance' then
 		path = initial
 		if #args == 0 then
+			warn('no arguments:', path)
 			return path
 		end
 		for _, str in next, args do
